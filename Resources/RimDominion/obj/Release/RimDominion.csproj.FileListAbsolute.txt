@@ -1,0 +1,5 @@
+D:\RimWorld1.6\Mods\RimDominion\Assemblies\RimDominion.dll
+D:\RimWorld1.6\Mods\RimDominion\Assemblies\RimDominion.pdb
+D:\RimWorld1.6\Mods\RimDominion\Resources\RimDominion\obj\Release\RimDominion.csproj.CoreCompileInputs.cache
+D:\RimWorld1.6\Mods\RimDominion\Resources\RimDominion\obj\Release\RimDominion.dll
+D:\RimWorld1.6\Mods\RimDominion\Resources\RimDominion\obj\Release\RimDominion.pdb
