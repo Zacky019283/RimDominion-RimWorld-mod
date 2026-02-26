@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+<WorldObjectDef ParentName="Settlement">
+  <defName>CapitalSettlement</defName>
+  <label>capital settlement</label>
+  <description>A major city that serves as the faction's capital.</description>
+  <worldObjectClass>MyMod.CapitalSettlement</worldObjectClass>
+  <comps>
+    <li Class="MyMod.WorldObjectCompProperties_Capital" />
+  </comps>
+<expandingIconDrawSize>1.3</expandingIconDrawSize>
+</WorldObjectDef>
+
+<WorldObjectDef ParentName="Settlement">
+  <defName>Village</defName>
+  <label>village</label>
+  <description>a village.</description>
+  <worldObjectClass>Settlement</worldObjectClass>
+<expandingIconDrawSize>0.6</expandingIconDrawSize>
+</WorldObjectDef>
+</Defs>
