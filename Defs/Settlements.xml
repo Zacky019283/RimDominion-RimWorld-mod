@@ -14,8 +14,9 @@
 <WorldObjectDef ParentName="Settlement">
   <defName>Village</defName>
   <label>village</label>
-  <description>a village.</description>
+  <description>a small settlement.</description>
   <worldObjectClass>Settlement</worldObjectClass>
 <expandingIconDrawSize>0.6</expandingIconDrawSize>
 </WorldObjectDef>
 </Defs>
+
