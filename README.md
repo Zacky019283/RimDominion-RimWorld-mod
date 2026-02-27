@@ -15,7 +15,7 @@ Large urban centers acting as logistical hubs.
 #### - **Small city**:
 Small urban parts that helps large city.
 #### - **Village**:
-Small outposts serving as the first line of defense, more weak than other settlements, but good battlefield for mid-game condition.
+Small outposts serving as the first line of defense, more weak than other settlements, and good target for mid-game condition.
 
 ### 2. Intelligent Clustering & Encirclement Logic
 
