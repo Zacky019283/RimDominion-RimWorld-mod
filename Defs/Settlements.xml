@@ -4,10 +4,7 @@
   <defName>CapitalSettlement</defName>
   <label>capital settlement</label>
   <description>A major city that serves as the faction's capital.</description>
-  <worldObjectClass>MyMod.CapitalSettlement</worldObjectClass>
-  <comps>
-    <li Class="MyMod.WorldObjectCompProperties_Capital" />
-  </comps>
+  <worldObjectClass>RimDominion.CapitalSettlement</worldObjectClass>
 <expandingIconDrawSize>1.4</expandingIconDrawSize>
 </WorldObjectDef>
 
@@ -15,7 +12,7 @@
   <defName>Village</defName>
   <label>village</label>
   <description>a village.</description>
-  <worldObjectClass>Village</worldObjectClass>
+  <worldObjectClass>RimDominion.Village</worldObjectClass>
 <expandingIconDrawSize>0.6</expandingIconDrawSize>
 </WorldObjectDef>
 
@@ -23,7 +20,7 @@
   <defName>SmallCity</defName>
   <label>small city</label>
   <description>a small city.</description>
-  <worldObjectClass>SmallCity</worldObjectClass>
+  <worldObjectClass>RimDominion.SmallCity</worldObjectClass>
 <expandingIconDrawSize>0.9</expandingIconDrawSize>
 </WorldObjectDef>
 
@@ -31,7 +28,7 @@
   <defName>LargeCity</defName>
   <label>large city</label>
   <description>a large city.</description>
-  <worldObjectClass>LargeCity</worldObjectClass>
+  <worldObjectClass>RimDoiminion.LargeCity</worldObjectClass>
 <expandingIconDrawSize>1.2</expandingIconDrawSize>
 </WorldObjectDef>
 </Defs>
