@@ -47,3 +47,5 @@ Forget the spaceship. Kicking off the planet is for the weak. To win, you must a
 ## License
 
 Distributed under the MIT License. This is an open-source project; feel free to contribute and help build the ultimate RimWorld strategy experience.
+
+If you find a bug or have new ideas, please open an issue! Pull request also welcome!
