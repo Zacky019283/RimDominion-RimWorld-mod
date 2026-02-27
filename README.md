@@ -8,10 +8,10 @@ RimDominion is a geopolitical overhaul that transforms RimWorld into a grand str
 
 The world map is no longer a collection of random outposts. Settlements now follow a strategic hierarchy:
 
-#- **Capital**: The faction's heart. It serves as the primary anchor for territory and possesses the strongest defenses.
-#- **Large city**: Large urban centers acting as logistical hubs.
-#- **Small city**:Small urban parts that helps large city.
-#- **Village**: Small outposts serving as the first line of defense.
+## - **Capital**: The faction's heart. It serves as the primary anchor for territory and possesses the strongest defenses.
+## - **Large city**: Large urban centers acting as logistical hubs.
+## - **Small city**:Small urban parts that helps large city.
+## - **Village**: Small outposts serving as the first line of defense.
 
 ### 2. Intelligent Clustering & Encirclement Logic
 
