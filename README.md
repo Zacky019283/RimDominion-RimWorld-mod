@@ -17,7 +17,7 @@ Small urban center that support larger cities.
 #### - **Village**:
 Small outposts serving as the first line of defense, more weak than other settlements, and excellent target for mid-game.
 
-### 2. Intelligent Clustering & Encirclement Logic
+### 2. Intelligent Clustering
 
 This mod patches the World Generator to create a more realistic geopolitical landscape:
 
