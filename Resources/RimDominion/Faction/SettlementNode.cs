@@ -7,12 +7,11 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace MyMod
+namespace RimDominion
 {
     [HarmonyPatch(typeof(FactionGenerator), "GenerateFactionsIntoWorldLayer")]
     public static class Patch_GenerateFactionsIntoWorldLayer
     {
-
         static MethodInfo initFactionsMI =
             typeof(FactionGenerator).GetMethod(
                 "InitializeFactions",
@@ -20,6 +19,7 @@ namespace MyMod
 
         public static bool Prefix(PlanetLayer layer, List<FactionDef> factions = null)
         {
+            var faction = Find.FactionManager.AllFactionsListForReading.Where(f => !f.IsPlayer && !f.def.hidden);
             initFactionsMI.Invoke(null, new object[] { layer, factions });
 
             var validFactions = Find.World.factionManager.AllFactionsListForReading
@@ -41,26 +41,85 @@ namespace MyMod
                 layer.TilesCount / 100000f * per100k * scale * angleFactor);
 
             targetCount -= Find.WorldObjects.AllSettlementsOnLayer(layer).Count;
+            var capitals = Find.WorldObjects.Settlements.Where(s => s.Faction == faction && s is CapitalSettlement).ToList();
 
-            for (int i = 0; i < targetCount; i++)
-            {
-                Settlement settlement =
-                    (Settlement)WorldObjectMaker.MakeWorldObject(layer.Def.SettlementWorldObjectDef);
+            int largeCount = Mathf.RoundToInt(targetCount * 0.5f);
+            int smallCount = Mathf.RoundToInt(targetCount * 0.9f);
+            int villCount = targetCount * 2;
 
-                settlement.Tile = TileFinder.RandomSettlementTileFor(layer, null, false, null);
-                Find.WorldObjects.Add(settlement);
-
-                ResolveSettlementFaction(settlement);
-            }
+            SpawnSettlementsOfType<LargeCity>(layer, largeCount);
+            SpawnSettlementsOfType<SmallCity>(layer, smallCount);
+            SpawnSettlementsOfType<Village>(layer, villCount);
 
             foreach (var s in Find.WorldObjects.Settlements)
             {
                 if (s.Faction != null)
                     EnforceLocalFactionDominance(s);
             }
-            SpawnVillages();
+
             Find.IdeoManager.SortIdeos();
             return false;
+        }
+
+        private static void FixDuplicateCapitals(Faction faction)
+        {
+            var capitals = Find.WorldObjects.Settlements
+                .Where(s => s.Faction == faction && s is CapitalSettlement)
+                .ToList();
+
+            if (capitals.Count <= 1) return;
+
+            Settlement wrong = capitals
+                .FirstOrDefault(s => !(s as INameableWorldObject)?.Name?.Contains("(Capital)") ?? true);
+
+            if (wrong == null) return;
+
+            int tile = wrong.Tile;
+            Find.WorldObjects.Remove(wrong);
+
+            LargeCity newCap = (LargeCity)WorldObjectMaker.MakeWorldObject(
+                DefDatabase<WorldObjectDef>.AllDefsListForReading
+                    .First(d => d.worldObjectClass == typeof(LargeCity))
+            );
+
+            newCap.SetFaction(faction);
+            newCap.Tile = tile;
+
+            if (newCap is INameableWorldObject nameable)
+            {
+                string name = SettlementNameGenerator.GenerateSettlementName(newCap, null) + " (Large)";
+                if (name.Contains(" Village"))
+                    name = name.Replace(" Village", "").Trim();
+                nameable.Name = name;
+            }
+
+            Find.WorldObjects.Add(newCap);
+        }
+
+        private static void SpawnSettlementsOfType<T>(
+            PlanetLayer layer,
+            int count)
+            where T : Settlement
+        {
+
+            int spawned = 0;
+            int safety = count * 20;
+
+            while (spawned < count && safety-- > 0)
+            {
+                int tile = TileFinder.RandomSettlementTileFor(layer, null, false, null);
+                if (tile < 0) continue;
+
+                T s = (T)WorldObjectMaker.MakeWorldObject(WorldObjectDefOfLocal<T>.Def);
+                s.Tile = tile;
+
+                Find.WorldObjects.Add(s);
+
+                ResolveSettlementFaction(s);
+
+                if (s.Faction != null)
+                    spawned++;
+            }
         }
 
         private static CapitalSettlement FindFactionCapital(Faction faction)
@@ -247,13 +306,39 @@ namespace MyMod
 
             return best.RandomElement();
         }
+
         private static void AssignFactionAndName(Settlement settlement, Faction faction)
         {
             settlement.SetFaction(faction);
 
             if (settlement is INameableWorldObject nameable)
             {
-                nameable.Name = SettlementNameGenerator.GenerateSettlementName(settlement, null);
+                string name = SettlementNameGenerator.GenerateSettlementName(settlement, null);
+
+                if (settlement is LargeCity)
+                {
+                    name += " (Large)";
+                    if (name.Contains("Village"))
+                        name = name.Replace("Village", "").Trim();
+                }
+                else if (settlement is SmallCity)
+                {
+                    name += " (Small)";
+                    if (name.Contains("Village"))
+                        name = name.Replace("Village", "").Trim();
+                }
+
+                else if (settlement is Village)
+                {
+                    name += " village";
+                    if (name.Contains("Village village"))
+                        name = name.Replace("Village", "").Trim();
+                    else if (name.Contains("City village"))
+                        name = name.Replace("City", "").Trim();
+                    else if (name.Contains("village"))
+                        name = name.Replace("village", "Village").Trim();
+                }
+                nameable.Name = name;
             }
         }
 
@@ -288,7 +373,6 @@ namespace MyMod
             }
             else
             {
-
                 bool ok = AssignFactionFromCapitalRadiusSettlements(
                     settlement,
                     capitals,
@@ -301,68 +385,12 @@ namespace MyMod
                 }
             }
         }
+    }
 
-        public static void SpawnVillages()
-        {
-            WorldGrid grid = Find.WorldGrid;
-            var settlements = Find.WorldObjects.Settlements;
-
-            if (settlements.Count == 0) return;
-
-            int targetVillages = settlements.Count * 2;
-
-
-            int spawned = 0;
-            int safety = grid.TilesCount * 2;
-
-            while (spawned < targetVillages && safety-- > 0)
-            {
-                int tile = Rand.Range(0, grid.TilesCount);
-                if (grid[tile].WaterCovered) continue;
-                if (!TileFinder.IsValidTileForNewSettlement(tile)) continue;
-                var biome = grid[tile].Biomes;
-
-                if (biome == BiomeDefOf.IceSheet || biome == BiomeDefOf.SeaIce)
-                    continue;
-
-                Settlement nearest = null;
-                float bestDist = float.MaxValue;
-
-                foreach (var s in settlements)
-                {
-                    if (s.Faction == null) continue;
-
-                    float dist = grid.ApproxDistanceInTiles(tile, s.Tile);
-                    if (dist < bestDist)
-                    {
-                        bestDist = dist;
-                        nearest = s;
-                    }
-                }
-
-                if (nearest == null) continue;
-
-                // spawn village
-                Settlement village =
-                    (Settlement)WorldObjectMaker.MakeWorldObject(
-                        DefDatabase<WorldObjectDef>.GetNamed("Village")
-                    );
-
-                village.Tile = tile;
-                village.SetFaction(nearest.Faction);
-                village.Name = SettlementNameGenerator.GenerateSettlementName(village) + " village";
-                if (village.Name.Contains("Village village"))
-                    village.Name = village.Name.Replace("Village village", "Village").Trim();
-
-                if (village.Name.Contains("City village"))
-                    village.Name = village.Name.Replace("City village", "Village").Trim();
-
-                if (village.Name.Contains("village"))
-                    village.Name = village.Name.Replace("village", "Village").Trim();
-                Find.WorldObjects.Add(village);
-
-                spawned++;
-            }
-        }
+    public static class WorldObjectDefOfLocal<T> where T : WorldObject
+    {
+        public static WorldObjectDef Def =
+            DefDatabase<WorldObjectDef>.AllDefsListForReading
+            .First(d => d.worldObjectClass == typeof(T));
     }
 }

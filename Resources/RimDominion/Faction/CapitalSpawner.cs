@@ -1,15 +1,10 @@
 ﻿using RimWorld;
 using Verse;
 using RimWorld.Planet;
-using System.Collections.Generic;
 using System.Linq;
-using System;
-using RimWorld.BaseGen;
 using HarmonyLib;
-using UnityEngine;
-using System.Diagnostics;
 
-namespace MyMod
+namespace RimDominion
 {
 	[HarmonyPatch(typeof(FactionGenerator))]
 	[HarmonyPatch(nameof(FactionGenerator.NewGeneratedFaction),
@@ -63,17 +58,42 @@ namespace MyMod
 			}
 			if (!faction.Hidden && !factionDef.isPlayer)
 			{
-				WorldObject worldObject = WorldObjectMaker.MakeWorldObject(DefDatabase<WorldObjectDef>.GetNamed("CapitalSettlement"));
-				worldObject.SetFaction(faction);
-				worldObject.Tile = TileFinder.RandomSettlementTileFor(layer, faction, false, null);
-				INameableWorldObject nameableWorldObject = worldObject as INameableWorldObject;
-				if (nameableWorldObject != null)
+				bool hasCapital = Find.WorldObjects.AllWorldObjects
+					.OfType<Settlement>()
+					.Any(s => s.Faction == faction && s is CapitalSettlement);
+
+				if (!hasCapital)
 				{
-					nameableWorldObject.Name = SettlementNameGenerator.GenerateSettlementName(worldObject, null) + " (Capital)";
-					if (nameableWorldObject.Name.Contains(" Village"))
-						nameableWorldObject.Name = nameableWorldObject.Name.Replace(" Village", "").Trim();
+					int tile = -1;
+					int tries = 20;
+
+					while (tries-- > 0 && tile < 0)
+					{
+						tile = TileFinder.RandomSettlementTileFor(layer, faction, false, null);
+					}
+
+					if (tile >= 0)
+					{
+						CapitalSettlement capital =
+							(CapitalSettlement)WorldObjectMaker.MakeWorldObject(
+								DefDatabase<WorldObjectDef>.AllDefsListForReading
+								.First(d => d.worldObjectClass == typeof(CapitalSettlement))
+							);
+
+						capital.SetFaction(faction);
+						capital.Tile = tile;
+
+						if (capital is INameableWorldObject nameable)
+						{
+							string name = SettlementNameGenerator.GenerateSettlementName(capital, null) + " (Capital)";
+							if (name.Contains("Village"))
+								name = name.Replace(" Village", "").Trim();
+							nameable.Name = name;
+						}
+
+						Find.WorldObjects.Add(capital);
+					}
 				}
-				Find.WorldObjects.Add(worldObject);
 			}
 			faction.TryGenerateNewLeader();
 			__result = faction;
@@ -93,7 +113,6 @@ namespace MyMod
 	{
 		public bool isCapital = false;
 
-		// Constructor default
 		public WorldObjectComp_Capital() { }
 
 		public override void PostExposeData()
@@ -107,10 +126,5 @@ namespace MyMod
 			var comp = s.GetComponent<WorldObjectComp_Capital>();
 			return comp != null && comp.isCapital;
 		}
-	}
-
-	[StaticConstructorOnStartup]
-	public class CapitalSettlement : Settlement
-	{
 	}
 }

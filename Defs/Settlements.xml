@@ -4,7 +4,7 @@
   <defName>CapitalSettlement</defName>
   <label>capital settlement</label>
   <description>A major city that serves as the faction's capital.</description>
-  <worldObjectClass>RimDominion.CapitalSettlement</worldObjectClass>
+  <worldObjectClass>RimDominion.CapitalSettlement</worldObjectClass>
 <expandingIconDrawSize>1.4</expandingIconDrawSize>
 </WorldObjectDef>
 
@@ -28,7 +28,7 @@
   <defName>LargeCity</defName>
   <label>large city</label>
   <description>a large city.</description>
-  <worldObjectClass>RimDoiminion.LargeCity</worldObjectClass>
+  <worldObjectClass>RimDominion.LargeCity</worldObjectClass>
 <expandingIconDrawSize>1.2</expandingIconDrawSize>
 </WorldObjectDef>
 </Defs>

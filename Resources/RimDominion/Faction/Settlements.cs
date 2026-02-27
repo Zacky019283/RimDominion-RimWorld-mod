@@ -1,12 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using RimWorld.Planet;
+using Verse;
 
-namespace RimDominion.Faction
+namespace RimDominion
 {
-    class Settlements
+    [StaticConstructorOnStartup]
+    public class CapitalSettlement : Settlement
     {
+        public float StrongPoint = 2.5f;
+    }
+    [StaticConstructorOnStartup]
+    public class Village : Settlement
+    {
+        public float StrongPoint = 0.7f;
+    }
+    [StaticConstructorOnStartup]
+    public class SmallCity : Settlement
+    {
+        public float StrongPoint = 1f;
+    }
+    [StaticConstructorOnStartup]
+    public class LargeCity : Settlement
+    {
+        public float StrongPoint = 2;
     }
 }
