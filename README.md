@@ -13,9 +13,9 @@ The faction's heart. It serves as the primary anchor for territory and possesses
 #### - **Large city**: 
 Large urban centers acting as logistical hubs.
 #### - **Small city**:
-Small urban parts that helps large city.
+Small urban center that support larger cities.
 #### - **Village**:
-Small outposts serving as the first line of defense, more weak than other settlements, and good target for mid-game condition.
+Small outposts serving as the first line of defense, more weak than other settlements, and excellent target for mid-game.
 
 ### 2. Intelligent Clustering & Encirclement Logic
 
