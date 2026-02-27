@@ -22,7 +22,6 @@ Small outposts serving as the first line of defense, more weak than other settle
 This mod patches the World Generator to create a more realistic geopolitical landscape:
 
 - **Faction Clusters**: Settlements spawn in groups centered around their respective Capitals based on geographic proximity.
-- **Dynamic Loyalty (Encirclement)**: If a settlement is isolated or completely surrounded by foreign factions, its allegiance will automatically flip to the dominant neighbor to maintain territorial integrity.
 
 ### 3. "Total Annihilation" Siege System
 
