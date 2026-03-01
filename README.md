@@ -20,6 +20,7 @@ Small outposts serving as the first line of defense, more weak than other settle
 ### 2. Intelligent Clustering
 
 This mod patches the World Generator to create a more realistic geopolitical landscape:
+![](Docs/RimWorldClustering.png)
 
 - **Faction Clusters**: Settlements spawn in groups centered around their respective Capitals based on geographic proximity.
 
