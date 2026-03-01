@@ -50,11 +50,24 @@ namespace RimDominion
             SpawnSettlementsOfType<LargeCity>(layer, largeCount);
             SpawnSettlementsOfType<SmallCity>(layer, smallCount);
             SpawnSettlementsOfType<Village>(layer, villCount);
+            foreach (var s in Find.WorldObjects.Settlements)
+            {
+                EnsureRoadConnection(s);
+            }
+            SpawnAdjacentSettlementsFor<CapitalSettlement>(layer, 2 , 6);
+            SpawnAdjacentSettlementsFor<LargeCity>(layer, 1, 3);
 
             foreach (var s in Find.WorldObjects.Settlements)
             {
                 if (s.Faction != null)
+                {
                     EnforceLocalFactionDominance(s);
+                }
+
+            }
+            foreach (Faction f in Find.FactionManager.AllFactions)
+            {
+                FixDuplicateCapitals(f);
             }
 
             Find.IdeoManager.SortIdeos();
@@ -384,6 +397,143 @@ namespace RimDominion
                     Find.WorldObjects.Remove(settlement);
                 }
             }
+        }
+        public static void SpawnAdjacentSettlementsFor<T>(PlanetLayer layer, int min, int max)
+            where T : Settlement
+        {
+            var sources = Find.WorldObjects.Settlements
+                .OfType<T>()
+                .Where(s => s.Faction != null)
+                .ToList();
+
+            foreach (var src in sources)
+            {
+                int desired = Rand.RangeInclusive(min, max);
+
+                List<PlanetTile> neighbors = new List<PlanetTile>();
+                Find.WorldGrid.GetTileNeighbors(src.Tile, neighbors);
+
+                neighbors.Shuffle();
+
+                int spawned = 0;
+
+                foreach (int tile in neighbors)
+                {
+                    if (spawned >= desired)
+                        break;
+
+                    if (Find.WorldObjects.AnyWorldObjectAt(tile))
+                        continue;
+
+                    if (Find.WorldGrid[tile].WaterCovered)
+                        continue;
+
+                    if (Find.WorldGrid[tile].Biomes == BiomeDefOf.SeaIce)
+                        continue;
+
+                    Settlement s = (Settlement)WorldObjectMaker.MakeWorldObject(WorldObjectDefOfLocal<SmallCity>.Def);
+                    s.Tile = tile;
+                    AssignFactionAndName(s, src.Faction);
+
+                    Find.WorldObjects.Add(s);
+
+                    SpawnStoneRoad(src.Tile, tile);
+
+                    spawned++;
+                }
+            }
+        }
+        private static void SpawnStoneRoad(int a, int b)
+        {
+            RoadDef road = DefDatabase<RoadDef>.GetNamed("StoneRoad");
+            Find.WorldGrid.OverlayRoad(a, b, road);
+        }
+
+        public static void EnsureRoadConnection(Settlement s)
+        {
+            if (s == null)
+                return;
+
+            var grid = Find.WorldGrid;
+
+            List<PlanetTile> neigh = new List<PlanetTile>();
+            grid.GetTileNeighbors(s.Tile, neigh);
+
+            foreach (int n in neigh)
+            {
+                if (grid.GetRoadDef(s.Tile, n) != null)
+                    return;
+            }
+
+            Settlement nearest = null;
+            float best = float.MaxValue;
+
+            foreach (var other in Find.WorldObjects.Settlements)
+            {
+                if (other == s)
+                    continue;
+
+                float dist = grid.ApproxDistanceInTiles(s.Tile, other.Tile);
+                if (dist < best)
+                {
+                    best = dist;
+                    nearest = other;
+                }
+            }
+
+            if (nearest == null)
+                return;
+
+            RoadDef road = GetSettlementRoad(nearest);
+            if (road == null)
+                road = DefDatabase<RoadDef>.AllDefsListForReading.FirstOrDefault();
+
+            int current = s.Tile;
+            int target = nearest.Tile;
+
+            int safety = 200;
+
+            while (current != target && safety-- > 0)
+            {
+                List<PlanetTile> ns = new List<PlanetTile>();
+                grid.GetTileNeighbors(current, ns);
+
+                int next = -1;
+                float bestDist = float.MaxValue;
+
+                foreach (int n in ns)
+                {
+                    float d = grid.ApproxDistanceInTiles(n, target);
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        next = n;
+                    }
+                }
+
+                if (next < 0)
+                    break;
+
+                grid.OverlayRoad(current, next, road);
+                current = next;
+            }
+        }
+
+        private static RoadDef GetSettlementRoad(Settlement s)
+        {
+            var grid = Find.WorldGrid;
+
+            List<PlanetTile> neigh = new List<PlanetTile>();
+            grid.GetTileNeighbors(s.Tile, neigh);
+
+            foreach (int n in neigh)
+            {
+                var r = grid.GetRoadDef(s.Tile, n);
+                if (r != null)
+                    return r;
+            }
+
+            return null;
         }
     }
 

@@ -9,7 +9,7 @@ namespace RimDominion
 {
     public class FactionStrongPointWorldComp : WorldComponent
     {
-        private Dictionary<int, int> factionStrongPoints = new Dictionary<int, int>();
+        private Dictionary<float, float> factionStrongPoints = new Dictionary<float, float>();
 
         public FactionStrongPointWorldComp(World world) : base(world) { }
 
@@ -27,9 +27,9 @@ namespace RimDominion
             {
                 if (s.Faction == null) continue;
 
-                int sp = GetSettlementSP(s);
+                float sp = GetSettlementSP(s);
 
-                if (factionStrongPoints.TryGetValue(s.Faction.loadID, out int cur))
+                if (factionStrongPoints.TryGetValue(s.Faction.loadID, out float cur))
                     factionStrongPoints[s.Faction.loadID] = cur + sp;
                 else
                     factionStrongPoints[s.Faction.loadID] = sp;
@@ -45,22 +45,23 @@ namespace RimDominion
             foreach (var k in keys)
             {
                 float mult = Rand.Range(0.8f, 1.2f);
-                factionStrongPoints[k] = Mathf.RoundToInt(factionStrongPoints[k] * mult);
+                factionStrongPoints[k] = factionStrongPoints[k] * mult;
             }
+            if (Prefs.DevMode)
+                LogAllFactionSP();
         }
 
-        public int GetFactionSP(Faction f)
+        public float GetFactionSP(Faction f)
         {
             if (f == null) return 0;
-            factionStrongPoints.TryGetValue(f.loadID, out int val);
+            factionStrongPoints.TryGetValue(f.loadID, out float val);
             return val;
         }
 
-        private int GetSettlementSP(Settlement s)
+        private float GetSettlementSP(Settlement s)
         {
-            if (s is LargeCity) return 3;
-            if (s is SmallCity) return 2;
-            if (s is Village) return 1;
+            if (s is HierarchySettlements hs)
+                return hs.StrongPoint;
             return 1;
         }
 
@@ -69,49 +70,15 @@ namespace RimDominion
             Scribe_Collections.Look(ref factionStrongPoints, "factionStrongPoints",
                 LookMode.Value, LookMode.Value);
         }
-    }
 
-    public class SettlementStrongPointComp : WorldObjectComp
-    {
-        public override IEnumerable<Gizmo> GetGizmos()
+        private void LogAllFactionSP()
         {
-            foreach (var g in base.GetGizmos())
-                yield return g;
-
-            yield return new Command_Action
+            foreach (var f in Find.FactionManager.AllFactionsListForReading)
             {
-                defaultLabel = "Show StrongPoint",
-                action = () =>
-                {
-                    var comp = Find.World.GetComponent<FactionStrongPointWorldComp>();
-                    int sp = comp.GetFactionSP(parent.Faction);
-                    Messages.Message("StrongPoint: " + sp, MessageTypeDefOf.NeutralEvent);
-                }
-            };
-        }
-
-        public override void PostMapGenerate()
-        {
-            base.PostMapGenerate();
-            Show();
-        }
-
-        public override void PostExposeData()
-        {
-            base.PostExposeData();
-        }
-
-        public override void PostAdd()
-        {
-            base.PostAdd();
-            Show();
-        }
-
-        private void Show()
-        {
-            var comp = Find.World.GetComponent<FactionStrongPointWorldComp>();
-            int sp = comp.GetFactionSP(parent.Faction);
-            Messages.Message("StrongPoint: " + sp, MessageTypeDefOf.NeutralEvent);
+                factionStrongPoints.TryGetValue(f.loadID, out float sp);
+                Log.Message($"[RimDominion] Faction '{f.Name}' (ID {f.loadID}) StrongPoints = {sp}");
+            }
         }
     }
+
 }

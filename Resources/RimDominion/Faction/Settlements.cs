@@ -4,23 +4,28 @@ using Verse;
 namespace RimDominion
 {
     [StaticConstructorOnStartup]
-    public class CapitalSettlement : Settlement
+    public class HierarchySettlements : Settlement
     {
-        public float StrongPoint = 2.5f;
+        public virtual float StrongPoint => 1f;
     }
     [StaticConstructorOnStartup]
-    public class Village : Settlement
+    public class CapitalSettlement : HierarchySettlements
     {
-        public float StrongPoint = 0.7f;
+        public override float StrongPoint => 10.3f;
     }
     [StaticConstructorOnStartup]
-    public class SmallCity : Settlement
+    public class LargeCity : HierarchySettlements
     {
-        public float StrongPoint = 1f;
+        public override float StrongPoint => 7.4f;
     }
     [StaticConstructorOnStartup]
-    public class LargeCity : Settlement
+    public class SmallCity : HierarchySettlements
     {
-        public float StrongPoint = 2;
+        public override float StrongPoint => 4.7f;
+    }
+    [StaticConstructorOnStartup]
+    public class Village : HierarchySettlements
+    {
+        public override float StrongPoint => 2.4f;
     }
 }
