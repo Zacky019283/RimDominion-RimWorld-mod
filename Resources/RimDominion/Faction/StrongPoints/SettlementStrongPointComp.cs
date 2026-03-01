@@ -42,8 +42,7 @@ namespace RimDominion
                 if (factionSP <= 0) continue;
 
                 float cur = GetCurrentSP(s);
-                float x = cur;
-                float sigmoid = 1f / (1f + Mathf.Exp((-factionSP) * x));
+                float sigmoid = 1f / (1f + Mathf.Exp((-factionSP) * cur));
                 float gain = sigmoid * baseSP;
 
                 settlementSP[s.ID] = cur + gain;

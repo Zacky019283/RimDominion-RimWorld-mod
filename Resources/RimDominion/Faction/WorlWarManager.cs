@@ -1,28 +1,30 @@
 ﻿using RimWorld.Planet;
 using Verse;
-using System.Collections.Generic;
+using RimWorld;
 using System.Linq;
 using UnityEngine;
+using System.Reflection;
 
 namespace RimDominion
 {
     public class WorldWarManager : WorldComponent
     {
-        public bool caravanActive;
         public bool siegeActive;
-
-        public int now;
-        public int intervalTicks;
-
+        public int now = 0;
+        public int interval;
         public int siegeNow;
-        public int siegeInterval;
+        public int startSiegeTick;
+        public float travelProgress;
 
         public Settlement attacker;
         public Settlement defender;
-        public float caravanPower;
+
+        private static FieldInfo cachedMatField = typeof(Settlement).GetField("cachedMat", BindingFlags.Instance | BindingFlags.NonPublic);
 
         public WorldWarManager(World world) : base(world)
         {
+            if (Find.World.GetComponent<WorldWarManager>() == null)
+                Find.World.components.Add(this);
         }
 
         public override void WorldComponentTick()
@@ -30,117 +32,138 @@ namespace RimDominion
             var goodwill = world.GetComponent<DynamicFactionGoodwill>();
             if (goodwill == null || !goodwill.warSituation) return;
 
-            if (!caravanActive && !siegeActive)
-            {
-                if (intervalTicks == 0)
-                {
-                    if (Prefs.DevMode)
-                        intervalTicks = 1;
-                    else intervalTicks = Rand.Range(2, 10) * 60000;
-                }
+            if (interval == 0)
+                interval = Prefs.DevMode ? 1 : Mathf.RoundToInt(Rand.Range(2, 10) * 60000);
 
-                now++;
+            now++;
+            if (now < interval) return;
+            now = 0;
 
-                if (now >= intervalTicks)
-                {
-                    now = 0;
-                    intervalTicks = 0;
-                    TryLaunchCaravan();
-                }
-            }
-            else if (caravanActive)
+            if (!siegeActive)
             {
-                TravelTick();
+                TryStartSiege();
+                Log.Message("TryStartSiege: ON");
             }
-            else if (siegeActive)
+            else
             {
                 SiegeTick();
             }
+
+            if (Prefs.DevMode && siegeActive)
+                ResolveSiege();
         }
 
-        void TryLaunchCaravan()
+        void TryStartSiege()
         {
             var settlements = Find.WorldObjects.Settlements.Cast<Settlement>()
-                .Where(s => !s.Faction.def.hidden)
+                .Where(s => s.Faction != null && !s.Faction.def.hidden && s.Faction != Faction.OfPlayer)
                 .ToList();
-
             if (settlements.Count < 2) return;
 
-            attacker = settlements.RandomElement();
-            defender = FindNearestEnemySettlement(attacker);
+            Settlement attacker = settlements.RandomElement();
+
+            Settlement defender = null;
+            float minDist = float.MaxValue;
+
+            foreach (var s in settlements)
+            {
+                if (s == attacker) continue;
+                float dist = Find.WorldGrid.ApproxDistanceInTiles(attacker.Tile, s.Tile);
+                if (dist < minDist)
+                {
+                    minDist = dist;
+                    defender = s;
+                }
+            }
 
             if (defender == null) return;
 
-            float dist = Find.WorldGrid.TraversalDistanceBetween(attacker.Tile, defender.Tile);
+            var nearbyAttackers = settlements
+                .Where(s => s != defender && Find.WorldGrid.ApproxDistanceInTiles(s.Tile, defender.Tile) <= 10f)
+                .ToList();
 
-            if (dist > 20f)
+            if (nearbyAttackers.Any())
+                attacker = nearbyAttackers.RandomElement();
+            else
             {
-                attacker = FindCloserSettlement(defender, settlements);
-                if (attacker == null) return;
+                float closestDist = float.MaxValue;
+                foreach (var s in settlements)
+                {
+                    if (s == defender) continue;
+                    float dist = Find.WorldGrid.ApproxDistanceInTiles(s.Tile, defender.Tile);
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        attacker = s;
+                    }
+                }
             }
 
-            caravanPower = GetStrongPoint(attacker);
-            caravanActive = true;
-        }
+            this.attacker = attacker;
+            this.defender = defender;
 
-        void TravelTick()
-        {
-            float dist = Find.WorldGrid.TraversalDistanceBetween(attacker.Tile, defender.Tile, false);
-            float speedPerTick = 10f / 60000f;
-            dist -= speedPerTick;
+            float distanceToTarget = Find.WorldGrid.ApproxDistanceInTiles(attacker.Tile, defender.Tile);
 
-            if (dist <= 0f)
+            if (Prefs.DevMode)
             {
-                caravanActive = false;
                 siegeActive = true;
-                siegeNow = 0;
-                siegeInterval = Rand.RangeInclusive(2, 5) * 2500;
+                Log.Message($"[WAR DEV] Siege started: {attacker.Name} ({attacker.Faction.Name}) → {defender.Name} ({defender.Faction.Name}) | Distance {distanceToTarget:F1}");
+            }
+            else
+            {
+                siegeActive = false;
+                startSiegeTick = Find.TickManager.TicksGame + Mathf.RoundToInt(60000f * distanceToTarget / 6f);
+                travelProgress = 0f;
             }
         }
 
         void SiegeTick()
         {
-            siegeNow++;
+            if (!siegeActive)
+            {
+                if (Find.TickManager.TicksGame < startSiegeTick || defender == null || attacker == null) return;
+                siegeActive = true;
+                siegeNow = 0;
+                Log.Message($"[WAR] Siege started: {attacker.Name} ({attacker.Faction.Name}) → {defender.Name} ({defender.Faction.Name})");
+            }
 
-            if (siegeNow < siegeInterval) return;
+            if (!Prefs.DevMode)
+            {
+                siegeNow++;
+                int warTime = Rand.Range(1, 5) * 25000;
+                if (siegeNow >= warTime)
+                    ResolveSiege();
+            }
+        }
 
-            siegeActive = false;
+        void ResolveSiege()
+        {
+            if (attacker == null || defender == null) return;
+
             var spComp = Find.World.GetComponent<SettlementStrongPointComp>();
-            float settlementSP = spComp.GetCurrentSP(defender);
-            float dynamicSP = settlementSP - caravanPower;
+            float defenderSP = spComp.GetCurrentSP(defender);
+            float attackerSP = spComp.GetCurrentSP(attacker) / 10f;
 
+            float dynamicSP = attackerSP - defenderSP;
             float sigmoid = 1f / (1f + Mathf.Exp(-0.1f * dynamicSP));
             float percent = Rand.Range(0f, 1f);
 
             if (percent < sigmoid)
             {
                 defender.SetFaction(attacker.Faction);
+                cachedMatField?.SetValue(attacker, null);
                 Find.World.renderer.Notify_StaticWorldObjectPosChanged();
-                Log.Message($"Faction {attacker.Faction.Name} was captured {defender.Name}");
+                Log.Message($"[WAR] Faction {attacker.Faction.Name} captured settlement {defender.Name}");
             }
-        }
+            else
+            {
+                Log.Message($"[WAR] Siege failed: {defender.Name} resisted {attacker.Faction.Name}");
+            }
 
-        Settlement FindNearestEnemySettlement(Settlement from)
-        {
-            return Find.WorldObjects.Settlements
-                .Where(s => s.Faction != from.Faction && !s.Faction.def.hidden)
-                .OrderBy(s => Find.WorldGrid.TraversalDistanceBetween(from.Tile, s.Tile))
-                .FirstOrDefault();
-        }
-
-        Settlement FindCloserSettlement(Settlement target, List<Settlement> pool)
-        {
-            return pool
-                .Where(s => s.Faction != target.Faction)
-                .OrderBy(s => Find.WorldGrid.TraversalDistanceBetween(s.Tile, target.Tile))
-                .FirstOrDefault();
-        }
-
-        float GetStrongPoint(Settlement s)
-        {
-            var fsp = Find.World.GetComponent<FactionStrongPointWorldComp>();
-            if (s.Faction == null) return 0f;
-            return fsp.GetFactionSP(s.Faction) / 10f;
+            siegeActive = false;
+            siegeNow = 0;
+            attacker = null;
+            defender = null;
         }
     }
 }

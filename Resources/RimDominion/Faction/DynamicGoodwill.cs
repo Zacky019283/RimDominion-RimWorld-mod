@@ -73,9 +73,9 @@ namespace RimDominion
             if (now >= TicksPerMonth)
             {
                 ApplyMonthlyShift();
-                CheckWarDeclarations();
                 now = 0;
             }
+            CheckWarDeclarations();
         }
 
         private void ApplyMonthlyShift()
