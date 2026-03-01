@@ -3,6 +3,7 @@ using Verse;
 using System.Collections.Generic;
 using RimWorld.Planet;
 using UnityEngine;
+using System;
 
 namespace RimDominion
 {
@@ -11,6 +12,10 @@ namespace RimDominion
         private int TicksPerMonth;
         private int now = 0;
         private bool initialApplied = false;
+        public bool warSituation = false;
+        private List<int> keysA;
+        private List<int> keysB;
+        private List<int> values;
 
         private Dictionary<PairKey, int> pairOffsets = new Dictionary<PairKey, int>();
 
@@ -68,6 +73,7 @@ namespace RimDominion
             if (now >= TicksPerMonth)
             {
                 ApplyMonthlyShift();
+                CheckWarDeclarations();
                 now = 0;
             }
         }
@@ -85,12 +91,47 @@ namespace RimDominion
                 {
                     var b = factions[j];
                     if (b == Faction.OfPlayerSilentFail || b.def.hidden) continue;
-                    int delta = BiasedDelta(a.GoodwillWith(b));
-                    a.TryAffectGoodwillWith(b, delta, false, false);
 
                     var key = PairKey.Of(a.loadID, b.loadID);
-                    pairOffsets.TryGetValue(key, out int cur);
-                    pairOffsets[key] = cur + delta;
+                    pairOffsets.TryGetValue(key, out int x);
+
+                    float sigmoid = 1f / (1f + Mathf.Exp(-0.2f * x));
+                    float percent = Rand.Range(0f, 1f);
+
+                    int magnitude = Rand.RangeInclusive(1, 6);
+                    int delta = percent < sigmoid ? magnitude : -magnitude;
+
+                    a.TryAffectGoodwillWith(b, delta, false, false);
+
+                    pairOffsets[key] = x + delta;
+                }
+            }
+        }
+
+        private void CheckWarDeclarations()
+        {
+            var factions = Find.FactionManager.AllFactionsListForReading;
+
+            for (int i = 0; i < factions.Count; i++)
+            {
+                var a = factions[i];
+                if (a.def.hidden) continue;
+
+                for (int j = i + 1; j < factions.Count; j++)
+                {
+                    var b = factions[j];
+                    if (b.def.hidden) continue;
+
+                    int goodwill = a.GoodwillWith(b);
+
+                    if (goodwill <= -80)
+                    {
+                        if (!a.HostileTo(b))
+                        {
+                            a.HostileTo(b);
+                        }
+                        warSituation = true;
+                    }
                 }
             }
         }
@@ -101,34 +142,58 @@ namespace RimDominion
             Scribe_Values.Look(ref now, "now");
             Scribe_Values.Look(ref initialApplied, "initialApplied");
 
-            Scribe_Collections.Look(ref pairOffsets, "pairOffsets",
-                LookMode.Value, LookMode.Value);
+            if (Scribe.mode == LoadSaveMode.Saving)
+            {
+                keysA = new List<int>(pairOffsets.Count);
+                keysB = new List<int>(pairOffsets.Count);
+                values = new List<int>(pairOffsets.Count);
+
+                foreach (var kv in pairOffsets)
+                {
+                    keysA.Add(kv.Key.A);
+                    keysB.Add(kv.Key.B);
+                    values.Add(kv.Value);
+                }
+            }
+
+            Scribe_Collections.Look(ref keysA, "pairA", LookMode.Value);
+            Scribe_Collections.Look(ref keysB, "pairB", LookMode.Value);
+            Scribe_Collections.Look(ref values, "pairV", LookMode.Value);
+
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                pairOffsets = new Dictionary<PairKey, int>();
+
+                if (keysA != null && keysB != null && values != null)
+                {
+                    int n = Mathf.Min(keysA.Count, keysB.Count, values.Count);
+                    for (int i = 0; i < n; i++)
+                    {
+                        var key = PairKey.Of(keysA[i], keysB[i]);
+                        pairOffsets[key] = values[i];
+                    }
+                }
+            }
         }
 
-        public struct PairKey : System.IEquatable<PairKey>
+        public struct PairKey : IEquatable<PairKey>
         {
             public int A;
             public int B;
 
-            public static PairKey Of(int id1, int id2)
+            public PairKey(int a, int b)
             {
-                return id1 < id2 ? new PairKey { A = id1, B = id2 }
-                                 : new PairKey { A = id2, B = id1 };
+                A = a;
+                B = b;
             }
 
+            public static PairKey Of(int a, int b) => new PairKey(a, b);
+
             public bool Equals(PairKey other) => A == other.A && B == other.B;
+
+            public override bool Equals(object obj) => obj is PairKey other && Equals(other);
+
             public override int GetHashCode() => (A * 397) ^ B;
-        }
-        private int BiasedDelta(int goodwillNow)
-        {
-            int magnitude = Rand.RangeInclusive(1, 4);
-
-            float chanceRaw = (goodwillNow + magnitude) / 40f;
-            float chance = Mathf.Clamp(chanceRaw, 0.1f, 0.9f);
-
-            bool positive = Rand.Value < chance;
-
-            return positive ? magnitude : -magnitude;
         }
     }
 }

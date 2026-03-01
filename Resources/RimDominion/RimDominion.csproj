@@ -57,14 +57,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Faction\CapitalSpawner.cs" />
+    <Compile Include="Faction\Patches\CapitalSpawner.cs" />
     <Compile Include="Faction\DynamicGoodwill.cs" />
     <Compile Include="Faction\FactionColor.cs" />
     <Compile Include="Faction\Faction_StrongPoint.cs" />
-    <Compile Include="Faction\Patch_MaxFaction.cs" />
-    <Compile Include="Faction\SettlementNode.cs" />
+    <Compile Include="Faction\Patches\CaptureSettlement.cs" />
+    <Compile Include="Faction\Patches\Patch_MaxFaction.cs" />
+    <Compile Include="Faction\Patches\SettlementNode.cs" />
+    <Compile Include="Faction\StrongPoints\SettlementStrongPointComp.cs" />
+    <Compile Include="Faction\WorlWarManager.cs" />
     <Compile Include="Faction\Settlements.cs" />
-    <Compile Include="Faction\StrongPoint.cs" />
+    <Compile Include="Faction\StrongPoints\StrongPoint.cs" />
     <Compile Include="HarmonyInit.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
