@@ -1,4 +1,4 @@
-# RimDominion
+# RimDominion (initial development)
 
 RimDominion is a geopolitical overhaul that transforms RimWorld into a grand strategy experience. This mod introduces a settlement hierarchy, dynamic faction clustering, and a ruthless new victory condition: The Planet Holder.
 
